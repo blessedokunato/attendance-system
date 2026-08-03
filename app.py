@@ -1,12 +1,11 @@
-from flask import Flask, render_template, request, redirect, url_for, session, Response
+import os
 import csv
 from io import StringIO
+from dotenv import load_dotenv
+from flask import Flask, render_template, request, redirect, url_for, session, Response, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from datetime import datetime, timedelta, timezone
-
-import os
-from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -62,7 +61,7 @@ class AttendanceRecord(db.Model):
 
 @app.route('/')
 def home():
-    return "Attendance System is running!"
+    return render_template('home.html')
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -80,6 +79,7 @@ def signup():
         db.session.add(new_teacher)
         db.session.commit()
 
+        flash('Account created! Please log in.')
         return redirect(url_for('login'))
 
     return render_template('signup.html')
@@ -97,8 +97,9 @@ def login():
             session['teacher_name'] = teacher.name
             return redirect(url_for('dashboard'))
         else:
-            return "Invalid email or password. <a href='/login'>Try again</a>"
-
+            flash('Invalid email or password. Please try again.', 'error')
+            return redirect(url_for('login'))
+        
     return render_template('login.html')
 
 @app.route('/dashboard')
@@ -144,27 +145,10 @@ def add_student(semester_id):
         new_student = Student(name=name, matric_number=matric_number, semester_id=semester.id)
         db.session.add(new_student)
         db.session.commit()
+        flash(f'{name} added successfully.')
         return redirect(url_for('view_semester', semester_id=semester.id))
 
     return render_template('add_student.html', semester=semester)
-
-@app.route('/student/<int:student_id>/delete', methods=['POST'])
-def delete_student(student_id):
-    if 'teacher_id' not in session:
-        return redirect(url_for('login'))
-
-    student = Student.query.get_or_404(student_id)
-    semester = Semester.query.get_or_404(student.semester_id)
-
-    if semester.teacher_id != session['teacher_id']:
-        return "Not authorized", 403
-
-    # Also delete any attendance records tied to this student, to keep the database clean
-    AttendanceRecord.query.filter_by(student_id=student.id).delete()
-    db.session.delete(student)
-    db.session.commit()
-
-    return redirect(url_for('view_semester', semester_id=semester.id))
 
 @app.route('/student/<int:student_id>/edit', methods=['GET', 'POST'])
 def edit_student(student_id):
@@ -181,10 +165,28 @@ def edit_student(student_id):
         student.name = request.form['name']
         student.matric_number = request.form['matric_number']
         db.session.commit()
+        flash('Student details updated.')
         return redirect(url_for('view_semester', semester_id=semester.id))
 
     return render_template('edit_student.html', student=student, semester=semester)
 
+@app.route('/student/<int:student_id>/delete', methods=['POST'])
+def delete_student(student_id):
+    if 'teacher_id' not in session:
+        return redirect(url_for('login'))
+
+    student = Student.query.get_or_404(student_id)
+    semester = Semester.query.get_or_404(student.semester_id)
+
+    if semester.teacher_id != session['teacher_id']:
+        return "Not authorized", 403
+
+    AttendanceRecord.query.filter_by(student_id=student.id).delete()
+    db.session.delete(student)
+    db.session.commit()
+
+    flash('Student removed.')
+    return redirect(url_for('view_semester', semester_id=semester.id))
 
 @app.route('/semester/<int:semester_id>')
 def view_semester(semester_id):
@@ -231,6 +233,14 @@ def create_session(semester_id):
 
     return render_template('create_session.html', semester=semester)
 
+@app.route('/session/<int:session_id>/created')
+def session_created(session_id):
+    if 'teacher_id' not in session:
+        return redirect(url_for('login'))
+
+    attendance_session = AttendanceSession.query.get_or_404(session_id)
+    return render_template('session_created.html', session=attendance_session)
+
 @app.route('/session/<int:session_id>/end', methods=['POST'])
 def end_session(session_id):
     if 'teacher_id' not in session:
@@ -242,18 +252,11 @@ def end_session(session_id):
     if semester.teacher_id != session['teacher_id']:
         return "Not authorized", 403
 
-    attendance_session.end_time = datetime.utcnow()  # closes the window immediately
+    attendance_session.end_time = datetime.utcnow()
     db.session.commit()
 
+    flash('Session ended.')
     return redirect(url_for('session_results', session_id=attendance_session.id))
-
-@app.route('/session/<int:session_id>/created')
-def session_created(session_id):
-    if 'teacher_id' not in session:
-        return redirect(url_for('login'))
-
-    attendance_session = AttendanceSession.query.get_or_404(session_id)
-    return render_template('session_created.html', session=attendance_session)
 
 @app.route('/session/<int:session_id>/mark', methods=['GET', 'POST'])
 def mark_attendance(session_id):
@@ -264,7 +267,7 @@ def mark_attendance(session_id):
 
     if request.method == 'POST':
         if not is_open:
-            return "Sorry, this attendance window has closed."
+            return render_template('attendance_result.html', success=False, message="Sorry, this attendance window has closed.")
 
         matric_number = request.form['matric_number'].strip()
 
@@ -274,7 +277,7 @@ def mark_attendance(session_id):
         ).first()
 
         if not student:
-            return "Matric number not found for this semester. <a href=''>Try again</a>"
+            return render_template('attendance_result.html', success=False, message="Matric number not found for this semester.")
 
         existing = AttendanceRecord.query.filter_by(
             session_id=attendance_session.id,
@@ -282,12 +285,12 @@ def mark_attendance(session_id):
         ).first()
 
         if existing:
-            return f"{student.name}, you've already been marked present for this session."
+            return render_template('attendance_result.html', success=True, message=f"{student.name}, you've already been marked present for this session.")
 
         record = AttendanceRecord(session_id=attendance_session.id, student_id=student.id)
         db.session.add(record)
         db.session.commit()
-        return f"Thanks {student.name}! You've been marked present."
+        return render_template('attendance_result.html', success=True, message=f"Thanks {student.name}! You've been marked present.")
 
     return render_template('mark_attendance.html', session=attendance_session, is_open=is_open)
 
@@ -329,7 +332,6 @@ def export_session_csv(session_id):
     records = AttendanceRecord.query.filter_by(session_id=attendance_session.id).all()
     present_student_ids = {record.student_id for record in records}
 
-    # Build the CSV in memory
     output = StringIO()
     writer = csv.writer(output)
     writer.writerow(['Name', 'Matric Number', 'Status'])
@@ -379,10 +381,10 @@ def semester_summary(semester_id):
             'percentage': percentage
         })
 
-    # Sort by percentage, lowest first — makes it easy to spot at-risk students
     summary.sort(key=lambda s: s['percentage'])
 
     return render_template('semester_summary.html', semester=semester, summary=summary, total_sessions=total_sessions)
+
 # ---------- RUN ----------
 
 if __name__ == '__main__':

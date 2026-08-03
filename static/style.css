@@ -163,3 +163,52 @@ li {
 p strong {
     color: #6d28d9;
 }
+
+@media (max-width: 600px) {
+    body {
+        padding: 10px;
+    }
+
+    .container {
+        padding: 24px 20px;
+        margin: 10px auto;
+        border-radius: 12px;
+    }
+
+    h2 {
+        font-size: 21px;
+    }
+
+    table, thead, tbody, th, td, tr {
+        display: block;
+    }
+
+    thead {
+        display: none;
+    }
+
+    tr {
+        margin-bottom: 12px;
+        border: 1px solid #eef0f3;
+        border-radius: 8px;
+        padding: 8px 12px;
+    }
+
+    td {
+        border: none;
+        padding: 6px 0;
+    }
+
+    td::before {
+        content: attr(data-label);
+        font-weight: 700;
+        color: #6d28d9;
+        display: block;
+        font-size: 11px;
+        text-transform: uppercase;
+    }
+
+    .nav-links {
+        flex-direction: column;
+    }
+}

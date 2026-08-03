@@ -3,15 +3,26 @@
 <head>
     <title>{{ semester.name }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📋</text></svg>">
 </head>
 <body>
     <div class="container">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div style="background:#ecfdf5; color:#065f46; padding:12px 16px; border-radius:8px; margin-bottom:20px; border-left:4px solid #10b981;">
+                    {% for message in messages %}
+                        <p style="margin:0;">{{ message }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
         <h2>{{ semester.name }}</h2>
 
         <div class="nav-links">
             <p><a href="{{ url_for('add_student', semester_id=semester.id) }}">+ Add Student</a></p>
             <p><a href="{{ url_for('create_session', semester_id=semester.id) }}">+ Start Attendance Session</a></p>
-            <p><a href="{{ url_for('semester_summary', semester_id=semester.id) }}"> Attendance Summary</a></p>
+            <p><a href="{{ url_for('semester_summary', semester_id=semester.id) }}">📊 Attendance Summary</a></p>
             <p><a href="{{ url_for('dashboard') }}">Back to Dashboard</a></p>
         </div>
 
