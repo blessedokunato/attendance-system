@@ -1,4 +1,6 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, Response
+import csv
+from io import StringIO
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from datetime import datetime, timedelta, timezone
@@ -312,6 +314,40 @@ def session_results(session_id):
         present_student_ids=present_student_ids
     )
 
+@app.route('/session/<int:session_id>/export')
+def export_session_csv(session_id):
+    if 'teacher_id' not in session:
+        return redirect(url_for('login'))
+
+    attendance_session = AttendanceSession.query.get_or_404(session_id)
+    semester = Semester.query.get_or_404(attendance_session.semester_id)
+
+    if semester.teacher_id != session['teacher_id']:
+        return "Not authorized", 403
+
+    all_students = Student.query.filter_by(semester_id=semester.id).all()
+    records = AttendanceRecord.query.filter_by(session_id=attendance_session.id).all()
+    present_student_ids = {record.student_id for record in records}
+
+    # Build the CSV in memory
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['Name', 'Matric Number', 'Status'])
+
+    for student in all_students:
+        status = 'Present' if student.id in present_student_ids else 'Absent'
+        writer.writerow([student.name, student.matric_number, status])
+
+    csv_data = output.getvalue()
+    output.close()
+
+    filename = f"{attendance_session.topic}_attendance.csv".replace(' ', '_')
+
+    return Response(
+        csv_data,
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+    )
 # ---------- RUN ----------
 
 if __name__ == '__main__':
