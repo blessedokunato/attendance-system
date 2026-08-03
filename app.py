@@ -146,6 +146,44 @@ def add_student(semester_id):
 
     return render_template('add_student.html', semester=semester)
 
+@app.route('/student/<int:student_id>/delete', methods=['POST'])
+def delete_student(student_id):
+    if 'teacher_id' not in session:
+        return redirect(url_for('login'))
+
+    student = Student.query.get_or_404(student_id)
+    semester = Semester.query.get_or_404(student.semester_id)
+
+    if semester.teacher_id != session['teacher_id']:
+        return "Not authorized", 403
+
+    # Also delete any attendance records tied to this student, to keep the database clean
+    AttendanceRecord.query.filter_by(student_id=student.id).delete()
+    db.session.delete(student)
+    db.session.commit()
+
+    return redirect(url_for('view_semester', semester_id=semester.id))
+
+@app.route('/student/<int:student_id>/edit', methods=['GET', 'POST'])
+def edit_student(student_id):
+    if 'teacher_id' not in session:
+        return redirect(url_for('login'))
+
+    student = Student.query.get_or_404(student_id)
+    semester = Semester.query.get_or_404(student.semester_id)
+
+    if semester.teacher_id != session['teacher_id']:
+        return "Not authorized", 403
+
+    if request.method == 'POST':
+        student.name = request.form['name']
+        student.matric_number = request.form['matric_number']
+        db.session.commit()
+        return redirect(url_for('view_semester', semester_id=semester.id))
+
+    return render_template('edit_student.html', student=student, semester=semester)
+
+
 @app.route('/semester/<int:semester_id>')
 def view_semester(semester_id):
     if 'teacher_id' not in session:
@@ -158,7 +196,13 @@ def view_semester(semester_id):
 
     students = Student.query.filter_by(semester_id=semester.id).all()
     sessions = AttendanceSession.query.filter_by(semester_id=semester.id).all()
-    return render_template('view_semester.html', semester=semester, students=students, sessions=sessions)
+    return render_template(
+        'view_semester.html',
+        semester=semester,
+        students=students,
+        sessions=sessions,
+        now=datetime.utcnow()
+    )
 
 @app.route('/semester/<int:semester_id>/create_session', methods=['GET', 'POST'])
 def create_session(semester_id):
@@ -184,6 +228,22 @@ def create_session(semester_id):
         return redirect(url_for('session_created', session_id=new_session.id))
 
     return render_template('create_session.html', semester=semester)
+
+@app.route('/session/<int:session_id>/end', methods=['POST'])
+def end_session(session_id):
+    if 'teacher_id' not in session:
+        return redirect(url_for('login'))
+
+    attendance_session = AttendanceSession.query.get_or_404(session_id)
+    semester = Semester.query.get_or_404(attendance_session.semester_id)
+
+    if semester.teacher_id != session['teacher_id']:
+        return "Not authorized", 403
+
+    attendance_session.end_time = datetime.utcnow()  # closes the window immediately
+    db.session.commit()
+
+    return redirect(url_for('session_results', session_id=attendance_session.id))
 
 @app.route('/session/<int:session_id>/created')
 def session_created(session_id):

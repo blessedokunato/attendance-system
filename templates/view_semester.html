@@ -20,11 +20,19 @@
                 <tr>
                     <th>Name</th>
                     <th>Matric Number</th>
+                    <th>Actions</th>
                 </tr>
                 {% for student in students %}
                 <tr>
                     <td>{{ student.name }}</td>
                     <td>{{ student.matric_number }}</td>
+                    <td>
+                        <a href="{{ url_for('edit_student', student_id=student.id) }}">Edit</a>
+                        &nbsp;|&nbsp;
+                        <form method="POST" action="{{ url_for('delete_student', student_id=student.id) }}" style="display:inline;" onsubmit="return confirm('Delete {{ student.name }}?');">
+                            <button type="submit" style="background:#dc2626; padding:4px 10px; margin:0; font-size:13px;">Delete</button>
+                        </form>
+                    </td>
                 </tr>
                 {% endfor %}
             </table>
@@ -39,6 +47,12 @@
                 <li>
                     {{ s.topic }} —
                     <a href="{{ url_for('session_results', session_id=s.id) }}">View Results</a>
+                    {% if s.end_time > now %}
+                        &nbsp;|&nbsp;
+                        <form method="POST" action="{{ url_for('end_session', session_id=s.id) }}" style="display:inline;" onsubmit="return confirm('End this session now?');">
+                            <button type="submit" style="background:#dc2626; padding:4px 10px; margin:0; font-size:13px;">End Now</button>
+                        </form>
+                    {% endif %}
                 </li>
             {% endfor %}
             </ul>
