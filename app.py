@@ -3,9 +3,14 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from datetime import datetime, timedelta, timezone
 
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'change-this-later-to-something-random'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///attendance.db'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'change-this-later-to-something-random')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///attendance.db')
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 
