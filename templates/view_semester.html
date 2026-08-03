@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ semester.name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h2>{{ semester.name }}</h2>
+
+        <div class="nav-links">
+            <p><a href="{{ url_for('add_student', semester_id=semester.id) }}">+ Add Student</a></p>
+            <p><a href="{{ url_for('create_session', semester_id=semester.id) }}">+ Start Attendance Session</a></p>
+            <p><a href="{{ url_for('dashboard') }}">Back to Dashboard</a></p>
+        </div>
+
+        <h3>Registered Students</h3>
+        {% if students %}
+            <table>
+                <tr>
+                    <th>Name</th>
+                    <th>Matric Number</th>
+                </tr>
+                {% for student in students %}
+                <tr>
+                    <td>{{ student.name }}</td>
+                    <td>{{ student.matric_number }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        {% else %}
+            <p>No students registered yet.</p>
+        {% endif %}
+
+        <h3>Attendance Sessions</h3>
+        {% if sessions %}
+            <ul>
+            {% for s in sessions %}
+                <li>
+                    {{ s.topic }} —
+                    <a href="{{ url_for('session_results', session_id=s.id) }}">View Results</a>
+                </li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p>No attendance sessions yet.</p>
+        {% endif %}
+    </div>
+</body>
+</html>

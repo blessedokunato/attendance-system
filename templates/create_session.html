@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Attendance Session</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h2>New Attendance Session — {{ semester.name }}</h2>
+        <form method="POST">
+            <label>Topic / Class Title:</label>
+            <input type="text" name="topic" placeholder="e.g. Week 3 - Data Structures" required>
+
+            <label>Open attendance for how many minutes?</label>
+            <input type="number" name="minutes" min="1" value="10" required>
+
+            <button type="submit">Start Session</button>
+        </form>
+        <p><a href="{{ url_for('view_semester', semester_id=semester.id) }}">Back</a></p>
+    </div>
+</body>
+</html>

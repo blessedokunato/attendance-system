@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Add Student</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h2>Add Student to {{ semester.name }}</h2>
+        <form method="POST">
+            <label>Full Name:</label>
+            <input type="text" name="name" required>
+
+            <label>Matric Number:</label>
+            <input type="text" name="matric_number" required>
+
+            <button type="submit">Add Student</button>
+        </form>
+        <p><a href="{{ url_for('view_semester', semester_id=semester.id) }}">Back to Semester</a></p>
+    </div>
+</body>
+</html>

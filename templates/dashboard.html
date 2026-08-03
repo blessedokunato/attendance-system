@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h2>Welcome, {{ name }}!</h2>
+        <div class="nav-links">
+            <p><a href="/create_semester">+ Create New Semester</a></p>
+            <p><a href="/logout">Logout</a></p>
+        </div>
+
+        <h3>Your Semesters</h3>
+        {% if semesters %}
+            <ul>
+            {% for semester in semesters %}
+                <li><a href="{{ url_for('view_semester', semester_id=semester.id) }}">{{ semester.name }}</a></li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p>You haven't created any semesters yet.</p>
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Semester</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h2>Create a New Semester</h2>
+        <form method="POST">
+            <label>Semester Name:</label>
+            <input type="text" name="name" placeholder="e.g. First Semester 2025/2026" required>
+            <button type="submit">Create</button>
+        </form>
+        <p><a href="/dashboard">Back to Dashboard</a></p>
+    </div>
+</body>
+</html>

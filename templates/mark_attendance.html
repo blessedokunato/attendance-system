@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mark Attendance</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h2>{{ session.topic }}</h2>
+
+        {% if is_open %}
+            <p>Attendance is <strong>OPEN</strong>. Enter your matric number below:</p>
+            <form method="POST">
+                <input type="text" name="matric_number" placeholder="Matric Number" required>
+                <button type="submit">Mark Me Present</button>
+            </form>
+        {% else %}
+            <p><strong>Sorry, this attendance window has closed.</strong></p>
+        {% endif %}
+    </div>
+</body>
+</html>

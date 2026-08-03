@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Session Started</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h2>Attendance Session Started!</h2>
+        <p><strong>{{ session.topic }}</strong></p>
+        <p>Share this link with your students:</p>
+        <p><a href="{{ url_for('mark_attendance', session_id=session.id, _external=True) }}">
+            {{ url_for('mark_attendance', session_id=session.id, _external=True) }}
+        </a></p>
+        <p>This link works until: {{ session.end_time | to_wat }} (WAT)</p>
+        <p><a href="{{ url_for('view_semester', semester_id=session.semester_id) }}">Back to Semester</a></p>
+    </div>
+</body>
+</html>
