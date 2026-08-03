@@ -348,6 +348,41 @@ def export_session_csv(session_id):
         mimetype='text/csv',
         headers={'Content-Disposition': f'attachment; filename="{filename}"'}
     )
+
+@app.route('/semester/<int:semester_id>/summary')
+def semester_summary(semester_id):
+    if 'teacher_id' not in session:
+        return redirect(url_for('login'))
+
+    semester = Semester.query.get_or_404(semester_id)
+    if semester.teacher_id != session['teacher_id']:
+        return "Not authorized", 403
+
+    students = Student.query.filter_by(semester_id=semester.id).all()
+    sessions = AttendanceSession.query.filter_by(semester_id=semester.id).all()
+    total_sessions = len(sessions)
+
+    summary = []
+    for student in students:
+        attended = AttendanceRecord.query.filter_by(student_id=student.id) \
+            .join(AttendanceSession) \
+            .filter(AttendanceSession.semester_id == semester.id) \
+            .count()
+
+        percentage = round((attended / total_sessions) * 100, 1) if total_sessions > 0 else 0
+
+        summary.append({
+            'name': student.name,
+            'matric_number': student.matric_number,
+            'attended': attended,
+            'total': total_sessions,
+            'percentage': percentage
+        })
+
+    # Sort by percentage, lowest first — makes it easy to spot at-risk students
+    summary.sort(key=lambda s: s['percentage'])
+
+    return render_template('semester_summary.html', semester=semester, summary=summary, total_sessions=total_sessions)
 # ---------- RUN ----------
 
 if __name__ == '__main__':

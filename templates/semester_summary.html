@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Attendance Summary - {{ semester.name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h2>Attendance Summary</h2>
+        <p>{{ semester.name }} — {{ total_sessions }} session(s) held</p>
+
+        {% if summary %}
+            <table>
+                <tr>
+                    <th>Name</th>
+                    <th>Matric Number</th>
+                    <th>Attended</th>
+                    <th>Percentage</th>
+                </tr>
+                {% for s in summary %}
+                <tr>
+                    <td>{{ s.name }}</td>
+                    <td>{{ s.matric_number }}</td>
+                    <td>{{ s.attended }} / {{ s.total }}</td>
+                    <td>
+                        {% if s.percentage < 50 %}
+                            <span style="color:#dc2626; font-weight:700;">{{ s.percentage }}%</span>
+                        {% elif s.percentage < 75 %}
+                            <span style="color:#d97706; font-weight:700;">{{ s.percentage }}%</span>
+                        {% else %}
+                            <span style="color:#16a34a; font-weight:700;">{{ s.percentage }}%</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        {% else %}
+            <p>No students registered yet.</p>
+        {% endif %}
+
+        <p><a href="{{ url_for('view_semester', semester_id=semester.id) }}">Back to Semester</a></p>
+    </div>
+</body>
+</html>
