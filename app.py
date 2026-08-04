@@ -1,3 +1,4 @@
+import random
 import os
 import csv
 from io import StringIO
@@ -9,6 +10,8 @@ from datetime import datetime, timedelta, timezone
 
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 load_dotenv()
 
@@ -23,7 +26,11 @@ app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
 mail = Mail(app)
-
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=[]
+)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
 WAT = timezone(timedelta(hours=1))  # West Africa Time = UTC+1
@@ -321,7 +328,9 @@ def end_session(session_id):
     flash('Session ended.')
     return redirect(url_for('session_results', session_id=attendance_session.id))
 
+
 @app.route('/session/<int:session_id>/mark', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")
 def mark_attendance(session_id):
     attendance_session = AttendanceSession.query.get_or_404(session_id)
     now = datetime.utcnow()
@@ -331,6 +340,14 @@ def mark_attendance(session_id):
     if request.method == 'POST':
         if not is_open:
             return render_template('attendance_result.html', success=False, message="Sorry, this attendance window has closed.")
+
+        # Check the CAPTCHA answer
+        expected_answer = session.get('captcha_answer')
+        submitted_answer = request.form.get('captcha_answer', '').strip()
+
+        if not expected_answer or submitted_answer != str(expected_answer):
+            flash('Incorrect answer to the security question. Please try again.', 'error')
+            return redirect(url_for('mark_attendance', session_id=session_id))
 
         matric_number = request.form['matric_number'].strip()
 
@@ -355,8 +372,13 @@ def mark_attendance(session_id):
         db.session.commit()
         return render_template('attendance_result.html', success=True, message=f"Thanks {student.name}! You've been marked present.")
 
-    return render_template('mark_attendance.html', session=attendance_session, is_open=is_open)
+    # Generate a simple math question for GET requests (i.e. loading the page)
+    import random
+    num1 = random.randint(1, 10)
+    num2 = random.randint(1, 10)
+    session['captcha_answer'] = num1 + num2
 
+    return render_template('mark_attendance.html', session=attendance_session, is_open=is_open, num1=num1, num2=num2)
 @app.route('/session/<int:session_id>/results')
 def session_results(session_id):
     if 'teacher_id' not in session:

@@ -7,12 +7,33 @@
 </head>
 <body>
     <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    {% if category == 'error' %}
+                        <div style="background:#fef2f2; color:#991b1b; padding:12px 16px; border-radius:8px; margin-bottom:20px; border-left:4px solid #dc2626;">
+                            <p style="margin:0;">{{ message }}</p>
+                        </div>
+                    {% else %}
+                        <div style="background:#ecfdf5; color:#065f46; padding:12px 16px; border-radius:8px; margin-bottom:20px; border-left:4px solid #10b981;">
+                            <p style="margin:0;">{{ message }}</p>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
         <h2>{{ session.topic }}</h2>
 
         {% if is_open %}
             <p>Attendance is <strong>OPEN</strong>. Enter your matric number below:</p>
             <form method="POST">
+                <label>Matric Number:</label>
                 <input type="text" name="matric_number" placeholder="Matric Number" required>
+
+                <label>Security check: what is {{ num1 }} + {{ num2 }}?</label>
+                <input type="number" name="captcha_answer" required>
+
                 <button type="submit">Mark Me Present</button>
             </form>
         {% else %}
