@@ -7,6 +7,9 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from datetime import datetime, timedelta, timezone
 
+from flask_mail import Mail, Message
+from itsdangerous import URLSafeTimedSerializer
+
 load_dotenv()
 
 app = Flask(__name__)
@@ -14,6 +17,14 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'change-this-later-to-so
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///attendance.db')
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+mail = Mail(app)
+
+serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
 WAT = timezone(timedelta(hours=1))  # West Africa Time = UTC+1
 
@@ -114,6 +125,58 @@ def dashboard():
 def logout():
     session.clear()
     return redirect(url_for('login'))
+
+@app.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form['email']
+        teacher = Teacher.query.filter_by(email=email).first()
+
+        if teacher:
+            token = serializer.dumps(email, salt='password-reset')
+            reset_url = url_for('reset_password', token=token, _external=True)
+
+            msg = Message('Reset Your Password - Attendance System',
+                          sender=app.config['MAIL_USERNAME'],
+                          recipients=[email])
+            msg.body = f'''Hi {teacher.name},
+
+You requested a password reset. Click the link below to set a new password:
+
+{reset_url}
+
+This link expires in 30 minutes. If you didn't request this, you can safely ignore this email.
+'''
+            mail.send(msg)
+
+        # Always show the same message, whether or not the email exists —
+        # this prevents someone from using this form to check which emails are registered
+        flash('If that email is registered, a reset link has been sent.')
+        return redirect(url_for('login'))
+
+    return render_template('forgot_password.html')
+
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    try:
+        email = serializer.loads(token, salt='password-reset', max_age=1800)  # 30 minutes
+    except Exception:
+        flash('This reset link is invalid or has expired. Please request a new one.', 'error')
+        return redirect(url_for('forgot_password'))
+
+    teacher = Teacher.query.filter_by(email=email).first()
+    if not teacher:
+        flash('Account not found.', 'error')
+        return redirect(url_for('forgot_password'))
+
+    if request.method == 'POST':
+        new_password = request.form['password']
+        teacher.password = bcrypt.generate_password_hash(new_password).decode('utf-8')
+        db.session.commit()
+        flash('Password updated! Please log in.')
+        return redirect(url_for('login'))
+
+    return render_template('reset_password.html', token=token)
 
 @app.route('/create_semester', methods=['GET', 'POST'])
 def create_semester():
