@@ -1,6 +1,8 @@
 import random
 import os
 import csv
+import qrcode
+from io import BytesIO
 from io import StringIO
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, redirect, url_for, session, Response, flash
@@ -311,6 +313,26 @@ def session_created(session_id):
     attendance_session = AttendanceSession.query.get_or_404(session_id)
     return render_template('session_created.html', session=attendance_session)
 
+@app.route('/session/<int:session_id>/qr')
+def session_qr(session_id):
+    if 'teacher_id' not in session:
+        return redirect(url_for('login'))
+
+    attendance_session = AttendanceSession.query.get_or_404(session_id)
+
+    mark_url = url_for('mark_attendance', session_id=attendance_session.id, _external=True)
+
+    qr = qrcode.QRCode(box_size=8, border=2)
+    qr.add_data(mark_url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+
+    buffer = BytesIO()
+    img.save(buffer, format="PNG")
+    buffer.seek(0)
+
+    return Response(buffer.getvalue(), mimetype='image/png')
+
 @app.route('/session/<int:session_id>/end', methods=['POST'])
 def end_session(session_id):
     if 'teacher_id' not in session:
@@ -394,12 +416,12 @@ def session_results(session_id):
     records = AttendanceRecord.query.filter_by(session_id=attendance_session.id).all()
     present_student_ids = {record.student_id for record in records}
 
-    return render_template(
-        'session_results.html',
+    return render_template('session_results.html',
         session=attendance_session,
         semester=semester,
         all_students=all_students,
-        present_student_ids=present_student_ids
+        present_student_ids=present_student_ids,
+        now=datetime.utcnow()
     )
 
 @app.route('/session/<int:session_id>/export')
