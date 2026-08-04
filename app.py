@@ -1,19 +1,17 @@
-import random
 import os
 import csv
+import random
 import qrcode
-from io import BytesIO
-from io import StringIO
+from io import StringIO, BytesIO
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, redirect, url_for, session, Response, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
-from datetime import datetime, timedelta, timezone
-
 from flask_mail import Mail, Message
-from itsdangerous import URLSafeTimedSerializer
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from itsdangerous import URLSafeTimedSerializer
+from datetime import datetime, timedelta, timezone
 
 load_dotenv()
 
@@ -22,18 +20,21 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'change-this-later-to-so
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///attendance.db')
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
+
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
 mail = Mail(app)
+
+serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
+
 limiter = Limiter(
     get_remote_address,
     app=app,
     default_limits=[]
 )
-serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
 WAT = timezone(timedelta(hours=1))  # West Africa Time = UTC+1
 
@@ -53,10 +54,16 @@ class Teacher(db.Model):
     email = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
 
+class Course(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150), nullable=False)  # e.g. "CSC 301 - Data Structures"
+    teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'), nullable=False)
+
 class Semester(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), nullable=False)
-    teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'), nullable=False)
+    course_id = db.Column(db.Integer, db.ForeignKey('course.id'), nullable=False)
+    course = db.relationship('Course', backref='semesters')
 
 class Student(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -119,7 +126,7 @@ def login():
         else:
             flash('Invalid email or password. Please try again.', 'error')
             return redirect(url_for('login'))
-        
+
     return render_template('login.html')
 
 @app.route('/dashboard')
@@ -127,8 +134,8 @@ def dashboard():
     if 'teacher_id' not in session:
         return redirect(url_for('login'))
 
-    semesters = Semester.query.filter_by(teacher_id=session['teacher_id']).all()
-    return render_template('dashboard.html', semesters=semesters, name=session['teacher_name'])
+    courses = Course.query.filter_by(teacher_id=session['teacher_id']).all()
+    return render_template('dashboard.html', courses=courses, name=session['teacher_name'])
 
 @app.route('/logout')
 def logout():
@@ -158,8 +165,6 @@ This link expires in 30 minutes. If you didn't request this, you can safely igno
 '''
             mail.send(msg)
 
-        # Always show the same message, whether or not the email exists —
-        # this prevents someone from using this form to check which emails are registered
         flash('If that email is registered, a reset link has been sent.')
         return redirect(url_for('login'))
 
@@ -168,7 +173,7 @@ This link expires in 30 minutes. If you didn't request this, you can safely igno
 @app.route('/reset_password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
     try:
-        email = serializer.loads(token, salt='password-reset', max_age=1800)  # 30 minutes
+        email = serializer.loads(token, salt='password-reset', max_age=1800)
     except Exception:
         flash('This reset link is invalid or has expired. Please request a new one.', 'error')
         return redirect(url_for('forgot_password'))
@@ -187,19 +192,76 @@ def reset_password(token):
 
     return render_template('reset_password.html', token=token)
 
-@app.route('/create_semester', methods=['GET', 'POST'])
-def create_semester():
+# ---------- COURSES ----------
+
+@app.route('/create_course', methods=['GET', 'POST'])
+def create_course():
     if 'teacher_id' not in session:
         return redirect(url_for('login'))
 
     if request.method == 'POST':
         name = request.form['name']
-        new_semester = Semester(name=name, teacher_id=session['teacher_id'])
-        db.session.add(new_semester)
+        new_course = Course(name=name, teacher_id=session['teacher_id'])
+        db.session.add(new_course)
         db.session.commit()
+        flash(f'Course "{name}" created.')
         return redirect(url_for('dashboard'))
 
-    return render_template('create_semester.html')
+    return render_template('create_course.html')
+
+@app.route('/course/<int:course_id>')
+def view_course(course_id):
+    if 'teacher_id' not in session:
+        return redirect(url_for('login'))
+
+    course = Course.query.get_or_404(course_id)
+    if course.teacher_id != session['teacher_id']:
+        return "Not authorized", 403
+
+    semesters = Semester.query.filter_by(course_id=course.id).all()
+    return render_template('view_course.html', course=course, semesters=semesters)
+
+# ---------- SEMESTERS ----------
+
+@app.route('/course/<int:course_id>/create_semester', methods=['GET', 'POST'])
+def create_semester(course_id):
+    if 'teacher_id' not in session:
+        return redirect(url_for('login'))
+
+    course = Course.query.get_or_404(course_id)
+    if course.teacher_id != session['teacher_id']:
+        return "Not authorized", 403
+
+    if request.method == 'POST':
+        name = request.form['name']
+        new_semester = Semester(name=name, course_id=course.id)
+        db.session.add(new_semester)
+        db.session.commit()
+        return redirect(url_for('view_course', course_id=course.id))
+
+    return render_template('create_semester.html', course=course)
+
+@app.route('/semester/<int:semester_id>')
+def view_semester(semester_id):
+    if 'teacher_id' not in session:
+        return redirect(url_for('login'))
+
+    semester = Semester.query.get_or_404(semester_id)
+
+    if semester.course.teacher_id != session['teacher_id']:
+        return "Not authorized", 403
+
+    students = Student.query.filter_by(semester_id=semester.id).all()
+    sessions = AttendanceSession.query.filter_by(semester_id=semester.id).all()
+    return render_template(
+        'view_semester.html',
+        semester=semester,
+        students=students,
+        sessions=sessions,
+        now=datetime.utcnow()
+    )
+
+# ---------- STUDENTS ----------
 
 @app.route('/semester/<int:semester_id>/add_student', methods=['GET', 'POST'])
 def add_student(semester_id):
@@ -208,7 +270,7 @@ def add_student(semester_id):
 
     semester = Semester.query.get_or_404(semester_id)
 
-    if semester.teacher_id != session['teacher_id']:
+    if semester.course.teacher_id != session['teacher_id']:
         return "Not authorized", 403
 
     if request.method == 'POST':
@@ -228,7 +290,7 @@ def bulk_upload_students(semester_id):
         return redirect(url_for('login'))
 
     semester = Semester.query.get_or_404(semester_id)
-    if semester.teacher_id != session['teacher_id']:
+    if semester.course.teacher_id != session['teacher_id']:
         return "Not authorized", 403
 
     if request.method == 'POST':
@@ -242,7 +304,6 @@ def bulk_upload_students(semester_id):
             flash('File must be a .csv file.', 'error')
             return redirect(url_for('bulk_upload_students', semester_id=semester.id))
 
-        # Read the uploaded file as text
         stream = StringIO(file.stream.read().decode('utf-8-sig'))
         reader = csv.reader(stream)
 
@@ -251,7 +312,7 @@ def bulk_upload_students(semester_id):
 
         for row_num, row in enumerate(reader, start=1):
             if row_num == 1 and row and row[0].strip().lower() in ('name', 'full name'):
-                continue  # skip header row
+                continue
 
             if len(row) < 2:
                 skipped += 1
@@ -264,7 +325,6 @@ def bulk_upload_students(semester_id):
                 skipped += 1
                 continue
 
-            # Avoid duplicate matric numbers within the same semester
             existing = Student.query.filter_by(semester_id=semester.id, matric_number=matric_number).first()
             if existing:
                 skipped += 1
@@ -288,7 +348,7 @@ def edit_student(student_id):
     student = Student.query.get_or_404(student_id)
     semester = Semester.query.get_or_404(student.semester_id)
 
-    if semester.teacher_id != session['teacher_id']:
+    if semester.course.teacher_id != session['teacher_id']:
         return "Not authorized", 403
 
     if request.method == 'POST':
@@ -308,7 +368,7 @@ def delete_student(student_id):
     student = Student.query.get_or_404(student_id)
     semester = Semester.query.get_or_404(student.semester_id)
 
-    if semester.teacher_id != session['teacher_id']:
+    if semester.course.teacher_id != session['teacher_id']:
         return "Not authorized", 403
 
     AttendanceRecord.query.filter_by(student_id=student.id).delete()
@@ -318,25 +378,7 @@ def delete_student(student_id):
     flash('Student removed.')
     return redirect(url_for('view_semester', semester_id=semester.id))
 
-@app.route('/semester/<int:semester_id>')
-def view_semester(semester_id):
-    if 'teacher_id' not in session:
-        return redirect(url_for('login'))
-
-    semester = Semester.query.get_or_404(semester_id)
-
-    if semester.teacher_id != session['teacher_id']:
-        return "Not authorized", 403
-
-    students = Student.query.filter_by(semester_id=semester.id).all()
-    sessions = AttendanceSession.query.filter_by(semester_id=semester.id).all()
-    return render_template(
-        'view_semester.html',
-        semester=semester,
-        students=students,
-        sessions=sessions,
-        now=datetime.utcnow()
-    )
+# ---------- ATTENDANCE SESSIONS ----------
 
 @app.route('/semester/<int:semester_id>/create_session', methods=['GET', 'POST'])
 def create_session(semester_id):
@@ -344,7 +386,7 @@ def create_session(semester_id):
         return redirect(url_for('login'))
 
     semester = Semester.query.get_or_404(semester_id)
-    if semester.teacher_id != session['teacher_id']:
+    if semester.course.teacher_id != session['teacher_id']:
         return "Not authorized", 403
 
     if request.method == 'POST':
@@ -377,7 +419,6 @@ def session_qr(session_id):
         return redirect(url_for('login'))
 
     attendance_session = AttendanceSession.query.get_or_404(session_id)
-
     mark_url = url_for('mark_attendance', session_id=attendance_session.id, _external=True)
 
     qr = qrcode.QRCode(box_size=8, border=2)
@@ -399,7 +440,7 @@ def end_session(session_id):
     attendance_session = AttendanceSession.query.get_or_404(session_id)
     semester = Semester.query.get_or_404(attendance_session.semester_id)
 
-    if semester.teacher_id != session['teacher_id']:
+    if semester.course.teacher_id != session['teacher_id']:
         return "Not authorized", 403
 
     attendance_session.end_time = datetime.utcnow()
@@ -407,7 +448,6 @@ def end_session(session_id):
 
     flash('Session ended.')
     return redirect(url_for('session_results', session_id=attendance_session.id))
-
 
 @app.route('/session/<int:session_id>/mark', methods=['GET', 'POST'])
 @limiter.limit("5 per minute")
@@ -421,7 +461,6 @@ def mark_attendance(session_id):
         if not is_open:
             return render_template('attendance_result.html', success=False, message="Sorry, this attendance window has closed.")
 
-        # Check the CAPTCHA answer
         expected_answer = session.get('captcha_answer')
         submitted_answer = request.form.get('captcha_answer', '').strip()
 
@@ -452,13 +491,12 @@ def mark_attendance(session_id):
         db.session.commit()
         return render_template('attendance_result.html', success=True, message=f"Thanks {student.name}! You've been marked present.")
 
-    # Generate a simple math question for GET requests (i.e. loading the page)
-    import random
     num1 = random.randint(1, 10)
     num2 = random.randint(1, 10)
     session['captcha_answer'] = num1 + num2
 
     return render_template('mark_attendance.html', session=attendance_session, is_open=is_open, num1=num1, num2=num2)
+
 @app.route('/session/<int:session_id>/results')
 def session_results(session_id):
     if 'teacher_id' not in session:
@@ -467,14 +505,15 @@ def session_results(session_id):
     attendance_session = AttendanceSession.query.get_or_404(session_id)
     semester = Semester.query.get_or_404(attendance_session.semester_id)
 
-    if semester.teacher_id != session['teacher_id']:
+    if semester.course.teacher_id != session['teacher_id']:
         return "Not authorized", 403
 
     all_students = Student.query.filter_by(semester_id=semester.id).all()
     records = AttendanceRecord.query.filter_by(session_id=attendance_session.id).all()
     present_student_ids = {record.student_id for record in records}
 
-    return render_template('session_results.html',
+    return render_template(
+        'session_results.html',
         session=attendance_session,
         semester=semester,
         all_students=all_students,
@@ -490,7 +529,7 @@ def export_session_csv(session_id):
     attendance_session = AttendanceSession.query.get_or_404(session_id)
     semester = Semester.query.get_or_404(attendance_session.semester_id)
 
-    if semester.teacher_id != session['teacher_id']:
+    if semester.course.teacher_id != session['teacher_id']:
         return "Not authorized", 403
 
     all_students = Student.query.filter_by(semester_id=semester.id).all()
@@ -522,7 +561,7 @@ def semester_summary(semester_id):
         return redirect(url_for('login'))
 
     semester = Semester.query.get_or_404(semester_id)
-    if semester.teacher_id != session['teacher_id']:
+    if semester.course.teacher_id != session['teacher_id']:
         return "Not authorized", 403
 
     students = Student.query.filter_by(semester_id=semester.id).all()

@@ -17,14 +17,15 @@
             {% endif %}
         {% endwith %}
 
+        <p style="color:#9ca3af; font-size:13px; margin-bottom:4px;">{{ semester.course.name }}</p>
         <h2>{{ semester.name }}</h2>
 
         <div class="nav-links">
             <p><a href="{{ url_for('add_student', semester_id=semester.id) }}">+ Add Student</a></p>
-            <p><a href="{{ url_for('bulk_upload_students', semester_id=semester.id) }}"> Bulk Upload (CSV)</a></p>
+            <p><a href="{{ url_for('bulk_upload_students', semester_id=semester.id) }}">📤 Bulk Upload (CSV)</a></p>
             <p><a href="{{ url_for('create_session', semester_id=semester.id) }}">+ Start Attendance Session</a></p>
             <p><a href="{{ url_for('semester_summary', semester_id=semester.id) }}">📊 Attendance Summary</a></p>
-            <p><a href="{{ url_for('dashboard') }}">Back to Dashboard</a></p>
+            <p><a href="{{ url_for('view_course', course_id=semester.course.id) }}">Back to Course</a></p>
         </div>
 
         <h3>Registered Students</h3>

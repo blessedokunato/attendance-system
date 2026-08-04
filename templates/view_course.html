@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Dashboard</title>
+    <title>{{ course.name }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📋</text></svg>">
 </head>
@@ -17,21 +17,22 @@
             {% endif %}
         {% endwith %}
 
-        <h2>Welcome, {{ name }}!</h2>
+        <h2>{{ course.name }}</h2>
+
         <div class="nav-links">
-            <p><a href="{{ url_for('create_course') }}">+ Create New Course</a></p>
-            <p><a href="/logout">Logout</a></p>
+            <p><a href="{{ url_for('create_semester', course_id=course.id) }}">+ Add Semester</a></p>
+            <p><a href="{{ url_for('dashboard') }}">Back to Dashboard</a></p>
         </div>
 
-        <h3>Your Courses</h3>
-        {% if courses %}
+        <h3>Semesters</h3>
+        {% if semesters %}
             <ul>
-            {% for course in courses %}
-                <li><a href="{{ url_for('view_course', course_id=course.id) }}">{{ course.name }}</a></li>
+            {% for semester in semesters %}
+                <li><a href="{{ url_for('view_semester', semester_id=semester.id) }}">{{ semester.name }}</a></li>
             {% endfor %}
             </ul>
         {% else %}
-            <p>You haven't created any courses yet.</p>
+            <p>No semesters added yet for this course.</p>
         {% endif %}
     </div>
 </body>

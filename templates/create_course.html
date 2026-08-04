@@ -1,19 +1,19 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Add Semester</title>
+    <title>Create Course</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📋</text></svg>">
 </head>
 <body>
     <div class="container">
-        <h2>Add a Semester to {{ course.name }}</h2>
+        <h2>Create a New Course</h2>
         <form method="POST">
-            <label>Semester Name:</label>
-            <input type="text" name="name" placeholder="e.g. First Semester 2025/2026" required>
+            <label>Course Name:</label>
+            <input type="text" name="name" placeholder="e.g. CSC 301 - Data Structures" required>
             <button type="submit">Create</button>
         </form>
-        <p><a href="{{ url_for('view_course', course_id=course.id) }}">Back to Course</a></p>
+        <p><a href="{{ url_for('dashboard') }}">Back to Dashboard</a></p>
     </div>
 </body>
 </html>
