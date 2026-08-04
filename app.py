@@ -222,6 +222,64 @@ def add_student(semester_id):
 
     return render_template('add_student.html', semester=semester)
 
+@app.route('/semester/<int:semester_id>/bulk_upload', methods=['GET', 'POST'])
+def bulk_upload_students(semester_id):
+    if 'teacher_id' not in session:
+        return redirect(url_for('login'))
+
+    semester = Semester.query.get_or_404(semester_id)
+    if semester.teacher_id != session['teacher_id']:
+        return "Not authorized", 403
+
+    if request.method == 'POST':
+        file = request.files.get('csv_file')
+
+        if not file or file.filename == '':
+            flash('Please choose a CSV file to upload.', 'error')
+            return redirect(url_for('bulk_upload_students', semester_id=semester.id))
+
+        if not file.filename.lower().endswith('.csv'):
+            flash('File must be a .csv file.', 'error')
+            return redirect(url_for('bulk_upload_students', semester_id=semester.id))
+
+        # Read the uploaded file as text
+        stream = StringIO(file.stream.read().decode('utf-8-sig'))
+        reader = csv.reader(stream)
+
+        added = 0
+        skipped = 0
+
+        for row_num, row in enumerate(reader, start=1):
+            if row_num == 1 and row and row[0].strip().lower() in ('name', 'full name'):
+                continue  # skip header row
+
+            if len(row) < 2:
+                skipped += 1
+                continue
+
+            name = row[0].strip()
+            matric_number = row[1].strip()
+
+            if not name or not matric_number:
+                skipped += 1
+                continue
+
+            # Avoid duplicate matric numbers within the same semester
+            existing = Student.query.filter_by(semester_id=semester.id, matric_number=matric_number).first()
+            if existing:
+                skipped += 1
+                continue
+
+            new_student = Student(name=name, matric_number=matric_number, semester_id=semester.id)
+            db.session.add(new_student)
+            added += 1
+
+        db.session.commit()
+        flash(f'{added} student(s) added. {skipped} row(s) skipped (duplicates or missing data).')
+        return redirect(url_for('view_semester', semester_id=semester.id))
+
+    return render_template('bulk_upload.html', semester=semester)
+
 @app.route('/student/<int:student_id>/edit', methods=['GET', 'POST'])
 def edit_student(student_id):
     if 'teacher_id' not in session:

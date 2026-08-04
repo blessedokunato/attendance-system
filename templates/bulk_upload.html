@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bulk Upload Students</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📋</text></svg>">
+</head>
+<body>
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    {% if category == 'error' %}
+                        <div style="background:#fef2f2; color:#991b1b; padding:12px 16px; border-radius:8px; margin-bottom:20px; border-left:4px solid #dc2626;">
+                            <p style="margin:0;">{{ message }}</p>
+                        </div>
+                    {% else %}
+                        <div style="background:#ecfdf5; color:#065f46; padding:12px 16px; border-radius:8px; margin-bottom:20px; border-left:4px solid #10b981;">
+                            <p style="margin:0;">{{ message }}</p>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <h2>Bulk Upload Students — {{ semester.name }}</h2>
+        <p style="color:#6b7280;">
+            Upload a CSV file with two columns: <strong>Name</strong> and <strong>Matric Number</strong>.
+            A header row is optional — if your first row says "Name, Matric Number" it'll be skipped automatically.
+        </p>
+        <p style="color:#6b7280; font-size:13px;">
+            Example:<br>
+            <code>John Adebayo, 20/1234</code><br>
+            <code>Amaka Chukwu, 20/1235</code>
+        </p>
+
+        <form method="POST" enctype="multipart/form-data">
+            <label>CSV File:</label>
+            <input type="file" name="csv_file" accept=".csv" required>
+            <button type="submit">Upload</button>
+        </form>
+
+        <p><a href="{{ url_for('view_semester', semester_id=semester.id) }}">Back to Semester</a></p>
+    </div>
+</body>
+</html>
