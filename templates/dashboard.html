@@ -24,15 +24,45 @@
         </div>
 
         <h3>Your Courses</h3>
+
         {% if courses %}
-            <ul>
+            <input
+                type="text"
+                id="courseSearch"
+                placeholder="Search your courses..."
+                onkeyup="filterCourses()"
+                style="margin-bottom: 14px;"
+            >
+
+            <ul id="courseList">
             {% for course in courses %}
-                <li><a href="{{ url_for('view_course', course_id=course.id) }}">{{ course.name }}</a></li>
+                <li class="course-item">
+                    <a href="{{ url_for('view_course', course_id=course.id) }}">{{ course.name }}</a>
+                </li>
             {% endfor %}
             </ul>
+
+            <p id="noResultsMsg" style="display:none; color:#6b7280;">No courses match your search.</p>
         {% else %}
             <p>You haven't created any courses yet.</p>
         {% endif %}
     </div>
+
+    <script>
+        function filterCourses() {
+            const query = document.getElementById('courseSearch').value.toLowerCase();
+            const items = document.querySelectorAll('.course-item');
+            let visibleCount = 0;
+
+            items.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                const matches = text.includes(query);
+                item.style.display = matches ? '' : 'none';
+                if (matches) visibleCount++;
+            });
+
+            document.getElementById('noResultsMsg').style.display = visibleCount === 0 ? 'block' : 'none';
+        }
+    </script>
 </body>
 </html>
