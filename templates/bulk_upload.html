@@ -1,6 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Attendora | Bulk Upload</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
@@ -36,8 +38,8 @@
         </p>
 
         <form method="POST" enctype="multipart/form-data">
-            <label>CSV File:</label>
-            <input type="file" name="csv_file" accept=".csv" required>
+            <label for="csv_file">CSV File:</label>
+<input type="file" id="csv_file" name="csv_file" accept=".csv" required>
             <button type="submit">Upload</button>
         </form>
 

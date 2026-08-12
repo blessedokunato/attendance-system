@@ -1,6 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Attendora | New Session</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
@@ -10,11 +12,11 @@
     <div class="container">
         <h2>New Attendance Session — {{ semester.name }}</h2>
         <form method="POST">
-            <label>Topic / Class Title:</label>
-            <input type="text" name="topic" placeholder="e.g. Week 3 - Data Structures" required>
+            <label for="topic">Topic / Class Title:</label>
+            <input type="text" id="topic" name="topic" placeholder="e.g. Week 3 - Data Structures" required>
 
-            <label>Open attendance for how many minutes?</label>
-            <input type="number" name="minutes" min="1" value="10" required>
+            <label for="minutes">Open attendance for how many minutes?</label>
+            <input type="number" id="minutes" name="minutes" min="1" value="10" required>
 
             <button type="submit">Start Session</button>
         </form>

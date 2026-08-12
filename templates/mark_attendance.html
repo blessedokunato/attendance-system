@@ -1,6 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Attendora | Mark Attendance</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
@@ -29,11 +31,11 @@
         {% if is_open %}
             <p>Attendance is <strong>OPEN</strong>. Enter your matric number below:</p>
             <form method="POST">
-                <label>Matric Number:</label>
-                <input type="text" name="matric_number" placeholder="Matric Number" required>
+                <label for="matric_number">Matric Number:</label>
+                <input type="text" id="matric_number" name="matric_number" placeholder="Matric Number" required>
 
-                <label>Security check: what is {{ num1 }} + {{ num2 }}?</label>
-                <input type="number" name="captcha_answer" required>
+                <label for="captcha_answer">Security check: what is {{ num1 }} + {{ num2 }}?</label>
+                <input type="number" id="captcha_answer" name="captcha_answer" required>
 
                 <button type="submit">Mark Me Present</button>
             </form>

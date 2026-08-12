@@ -1,6 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Attendora | Create Course</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
@@ -10,8 +12,8 @@
     <div class="container">
         <h2>Create a New Course</h2>
         <form method="POST">
-            <label>Course Name:</label>
-            <input type="text" name="name" placeholder="e.g. CSC 301 - Data Structures" required>
+            <label for="name">Course Name:</label>
+            <input type="text" id="name" name="name" placeholder="e.g. CSC 301 - Data Structures" required>
             <button type="submit">Create</button>
         </form>
         <p><a href="{{ url_for('dashboard') }}">Back to Dashboard</a></p>
